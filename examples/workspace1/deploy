@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+
+# fail on error
+set -e
+
+# extract args
+ACTION="$1"
+DIST_FILE="$2"
+
+#load host config
+source $TARGET_DIR/.config
+
+# sftp config
+SFTP_KEYFILE=".credentials/mikrotik"
+SFTP_KNOWN_HOSTS=".credentials/known_hosts"
+SFTP_PORT="22"
+SFTP_DSN="admin@$CONF_HOST"
+
+sftp_upload(){
+
+    echo "uploading config to $CONF_HOST"
+
+    # upload files
+    {
+        echo "cd flash"
+        echo "put $DIST_FILE config.rsc"
+    } | sftp -b - -i $SFTP_KEYFILE -P $SFTP_PORT -o UserKnownHostsFile=$SFTP_KNOWN_HOSTS -o StrictHostKeyChecking=no $SFTP_DSN && {
+        echo "files uploaded"
+    } || {
+        echo "uploading failed"
+        exit 1
+    }
+
+    # apply changes ?
+    if [ "$ACTION" == "apply" ]; then
+        echo "applying new configuration - system reset.."
+        ssh -i $SFTP_KEYFILE -p $SFTP_PORT -o UserKnownHostsFile=$SFTP_KNOWN_HOSTS -o StrictHostKeyChecking=no $SFTP_DSN \
+            "/system reset-configuration keep-users=yes run-after-reset=flash/config.rsc"
+    fi
+}
+
+# trigger upload
+sftp_upload

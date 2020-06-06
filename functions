@@ -1,0 +1,57 @@
+_print_colorized(){
+    # extract color
+    STYLE="$1"
+
+    # drop from argument list
+    shift
+
+    # print colorized message
+    IFS=''
+    echo -e "${STYLE}$*\e[0m"
+}
+
+print_heading(){
+    # title set ?
+    [ -z "$1" ] && return
+
+    # default style: bold blue
+    STYLE='\x1B[34m\x1B[1m'
+
+    # style set ?
+    [ ! -z "$2" ] && {
+        STYLE="$2"
+    }
+
+    # default title, text only
+    TITLE="$1"
+
+    # figlet available ?
+    command -v figlet > /dev/null && {
+        TITLE=$(figlet "${TITLE}")
+    }
+
+    # print heading
+    _print_colorized "$STYLE" \
+        "${TITLE}\n\n"
+}
+
+log_error(){
+    # red bold
+    _print_colorized '\x1B[91m\x1B[1m' " >> $@"
+}
+
+log_success(){
+    # green
+   _print_colorized '\x1B[92m' " >> $@"
+}
+
+log_info(){
+    # yellow
+    _print_colorized '\x1B[33m' " >> $@"
+}
+
+panic(){
+    print_heading " > build failed" '\x1B[91m\x1B[1m'
+    log_error "$@"
+    exit 1
+}

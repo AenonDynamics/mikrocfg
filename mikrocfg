@@ -1,0 +1,218 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-2.0
+
+# ____________________________________________
+#
+#           _ _                    __       
+#  _ __ ___ (_) | ___ __ ___   ___ / _| __ _ 
+# | '_ ` _ \| | |/ / '__/ _ \ / __| |_ / _` |
+# | | | | | | |   <| | | (_) | (__|  _| (_| |
+# |_| |_| |_|_|_|\_\_|  \___/ \___|_|  \__, |
+#                                      |___/ 
+# ____________________________________________
+
+VERSION="0.1.0"
+
+show_usage(){
+    cat << EOF
+Usage: mikrocfg <command> [args...]
+  Commands:
+    init <hostname>                run init script with default credentials on device (e.g. setup ssh keys; default 192.168.88.1)
+    build <target-directory>       build (merge) target config
+    deploy <target-directory>      deploy a already build target config using custom deploy script within working dir
+    apply <target-directory>       build, deploy and apply target configuration (system reset)
+    --help                         displays this help
+    --version                      displays version
+EOF
+    exit 0
+}
+
+show_version(){
+    cat << EOF
+mikrocfg
+ - Version: ${VERSION}
+ - License: GPL-2.0 https://www.gnu.org/licenses/gpl-2.0.html
+ - Repository: https://github.com/AenonDynamics/mikrocfg
+EOF
+    exit 0
+}
+
+# simple processing
+[ "$1" = "--help" ] && show_usage
+[ "$1" = "--version" ] && show_version
+
+# Exit on Error
+set -e
+
+# basedir
+export BASEDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+export WORKINGDIR="$(pwd)"
+
+# extract target name; remove trailing slash
+export TARGET_NAME="${2%/}"
+
+# assign target dir
+export TARGET_DIR=$WORKINGDIR/$TARGET_NAME
+
+# assign dist dir to copy files
+export DIST_BASEDIR=$WORKINGDIR/dist
+export DIST_DIR=$DIST_BASEDIR/$TARGET_NAME
+
+# get function utilities
+source $BASEDIR/functions
+
+# intro
+# ---------------------------------------
+function mikrocfg_intro(){
+    _print_colorized '\x1B[1m' "_________________________________________________________________\n"
+     print_heading " >> mikrocfg" '\x1B[1m'
+    _print_colorized '\x1B[1m' "_________________________________________________________________\n"
+}
+
+function mikrocfg_disclaimer(){
+    _print_colorized '\x1B[91m\x1B[1m' "_________________________________________________________________\n"
+    _print_colorized '\x1B[91m\x1B[1m' "This program is distributed in the hope that it will be useful,\nbut WITHOUT ANY WARRANTY; without even the implied warranty of"
+    _print_colorized '\x1B[91m\x1B[1m' "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\nSee the GNU General Public License v2 for more details."
+    _print_colorized '\x1B[91m\x1B[1m' "_________________________________________________________________\n"
+    _print_colorized '\x1B[1m' "mikrocfg ${VERSION} - github.com/AenonDynamics/mikrocfg"
+}
+
+# check directory structure
+# ---------------------------------------
+function mikrocfg_precheck(){
+    # Check directory
+    if [ ! -d "$TARGET_DIR" ]; then
+    panic "target [$TARGET_NAME] does not exists!"
+    fi
+
+    # Check directory
+    if [ ! -d "$DIST_BASEDIR" ]; then
+    panic "dist base directory [$DIST_BASEDIR] does not exists!"
+    fi
+}
+
+# Trigger build
+# ---------------------------------------
+function mikrocfg_build(){
+
+    log_info "building $TARGET_NAME"
+
+    # Check directory
+    if [ -d "$DIST_DIR" ]; then
+        log_info "dist directory does exists..cleanup"
+        rm -rf $DIST_DIR/*
+    else
+        log_info "dist directory [$DIST_DIR] does not exists..creating"
+        mkdir $DIST_DIR
+    fi
+
+    # Check build file
+    if [ ! -f "$TARGET_DIR/.config" ]; then
+        panic "target config file [$TARGET_DIR] does not exists!"
+    fi
+
+    # get all *.rsc file with leading priority "00-"
+    # merge all files into mikrotik.rsc
+    find $TARGET_DIR -type f,l | grep -E '/[0-9]+-.*\.rsc$' | sort | tee $DIST_DIR/files.txt | xargs cat > $DIST_DIR/mikrotik.rsc
+
+    log_success "BUILD READY [$DIST_DIR/mikrotik.rsc]" '\x1B[92m\x1B[1m'
+
+     # print files
+    log_success "files merged"
+    cat $DIST_DIR/files.txt
+}
+
+# Run deploy script
+# ---------------------------------------
+function mikrocfg_deploy(){
+    # deploy script exists ?
+    if [ ! -f $WORKINGDIR/deploy ]; then
+        panic "deploy script [$WORKINGDIR/deploy] not exists"
+    fi
+
+    # executable ?
+    if [ ! -x $WORKINGDIR/deploy ]; then
+        panic "deploy script [$WORKINGDIR/deploy] is not executable"
+    fi
+
+    # config exists ?
+    if [ ! -f $DIST_DIR/mikrotik.rsc ]; then
+        panic "config [$DIST_DIR/mikrotik.rsc] not exists"
+    fi
+
+    # execute script
+    log_info "deploying $TARGET_NAME"
+
+    $WORKINGDIR/deploy "$1" "$DIST_DIR/mikrotik.rsc" && {
+        log_success "deploying succeed"
+    } || {
+        panic "deploy action failed"
+    }
+}
+
+# initialize routeros device (setup accounts)
+# ---------------------------------------
+function mikrocfg_init(){
+    # config dir exists ?
+    if [ ! -d $WORKINGDIR/_init ]; then
+        panic "init config [$WORKINGDIR/_init] not exists"
+    fi
+
+    # default hostname
+    ROUTER_ADDR="192.168.88.1"
+
+    # hostname set ?
+    if [ ! -z "$2" ]; then
+        ROUTER_ADDR="$2"
+    fi
+
+    log_info "uploading initial config to $ROUTER_ADDR"
+
+    # upload files via scp
+    scp -o UserKnownHostsFile=$SFTP_KNOWN_HOSTS -o StrictHostKeyChecking=no $WORKINGDIR/_init/* admin@${ROUTER_ADDR}:/flash
+
+    # run init script ?
+    if [ -f $WORKINGDIR/_init/defconf.rsc ]; then
+        log_info "executing initial setup.."
+        ssh -o UserKnownHostsFile=$SFTP_KNOWN_HOSTS -o StrictHostKeyChecking=no admin@${ROUTER_ADDR} \
+            "/system reset-configuration keep-users=no skip-backup=yes run-after-reset=flash/defconf.rsc"
+    fi
+}
+
+# Command Dispatching
+# ---------------------------------------
+mikrocfg_disclaimer
+case "$1" in
+    init)
+        mikrocfg_intro
+        mikrocfg_init
+        exit 0
+    ;;
+
+    build)
+        mikrocfg_intro
+        mikrocfg_precheck
+        mikrocfg_build
+        exit 0
+    ;;
+
+    deploy)
+        mikrocfg_intro
+        mikrocfg_precheck
+        mikrocfg_deploy "deploy"
+        exit 0
+    ;;
+
+    apply)
+        mikrocfg_intro
+        mikrocfg_precheck
+        mikrocfg_build
+        mikrocfg_deploy "apply"
+        exit 0
+    ;;
+
+    *)
+        show_usage
+        exit 1
+    ;;
+esac
