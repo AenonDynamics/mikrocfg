@@ -158,6 +158,9 @@ function mikrocfg_init(){
         panic "init config [$WORKINGDIR/_init] not exists"
     fi
 
+    # default upload dir
+    UPLOAD_DIR="flash/"
+
     # default hostname
     ROUTER_ADDR="192.168.88.1"
 
@@ -168,14 +171,24 @@ function mikrocfg_init(){
 
     log_info "uploading initial config to $ROUTER_ADDR"
 
+    # /flash directory exists ? (not on CCR devices)
+    {
+        echo "cd flash"
+    } | sftp -b - -o UserKnownHostsFile=$SFTP_KNOWN_HOSTS -o StrictHostKeyChecking=no admin@${ROUTER_ADDR} && {
+        log_info "directory /flash exists - assuming legacy RB device"
+    } || {
+        log_info "directory /flash doesn't exists - assuming CCR/CRS device"
+        UPLOAD_DIR=""
+    }
+
     # upload files via scp
-    scp -o UserKnownHostsFile=$SFTP_KNOWN_HOSTS -o StrictHostKeyChecking=no $WORKINGDIR/_init/* admin@${ROUTER_ADDR}:/flash
+    scp -r -o UserKnownHostsFile=$SFTP_KNOWN_HOSTS -o StrictHostKeyChecking=no $WORKINGDIR/_init/* admin@${ROUTER_ADDR}:/${UPLOAD_DIR}
 
     # run init script ?
     if [ -f $WORKINGDIR/_init/defconf.rsc ]; then
         log_info "executing initial setup.."
         ssh -o UserKnownHostsFile=$SFTP_KNOWN_HOSTS -o StrictHostKeyChecking=no admin@${ROUTER_ADDR} \
-            "/system reset-configuration keep-users=no skip-backup=yes run-after-reset=flash/defconf.rsc"
+            "/system reset-configuration keep-users=no skip-backup=yes run-after-reset=${UPLOAD_DIR}defconf.rsc"
     fi
 }
 
