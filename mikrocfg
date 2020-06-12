@@ -111,15 +111,40 @@ function mikrocfg_build(){
         panic "target config file [$TARGET_DIR] does not exists!"
     fi
 
+    # current timestamp
+    BUILD_DATE=$(date +"%Y%m%dT%H%M")
+
+    # generate build info
+    cat <<EOF > $DIST_DIR/mikrotik.rsc
+# ----------------------------------------------
+# PROJECT:   $TARGET_NAME
+# BUILD:     $BUILD_DATE
+# GENERATOR: mikrocfg
+# ----------------------------------------------
+
+EOF
+
     # get all *.rsc file with leading priority "00-"
     # merge all files into mikrotik.rsc
-    find $TARGET_DIR -type f,l | grep -E '/[0-9]+-.*\.rsc$' | sort | tee $DIST_DIR/files.txt | xargs cat > $DIST_DIR/mikrotik.rsc
+    find $TARGET_DIR -type f,l | grep -E '/[0-9]+-.*\.rsc$' | sort | while read -r file
+    do
+        # extract filename
+        FILENAME=$(basename $file)
+
+        # show filename
+        log_info $FILENAME
+
+        # add header
+        echo -e "\n# >> $FILENAME\n" >> $DIST_DIR/mikrotik.rsc
+
+        # append file
+        cat $file >> $DIST_DIR/mikrotik.rsc
+    done
 
     log_success "BUILD READY [$DIST_DIR/mikrotik.rsc]" '\x1B[92m\x1B[1m'
 
      # print files
     log_success "files merged"
-    cat $DIST_DIR/files.txt
 }
 
 # Run deploy script
