@@ -121,7 +121,6 @@ function mikrocfg_build(){
 # BUILD:     $BUILD_DATE
 # GENERATOR: mikrocfg
 # ----------------------------------------------
-
 EOF
 
     # get all *.rsc file with leading priority "00-"
@@ -135,8 +134,10 @@ EOF
         log_info $FILENAME
 
         # add header
-        echo -e "\n# >> $FILENAME\n" >> $DIST_DIR/mikrotik.rsc
-
+        echo -e "\n# ----------------------------------------------" >> $DIST_DIR/mikrotik.rsc
+        echo "# FILE >> $FILENAME" >> $DIST_DIR/mikrotik.rsc
+        echo -e "# ----------------------------------------------\n" >> $DIST_DIR/mikrotik.rsc
+        
         # append file
         cat $file >> $DIST_DIR/mikrotik.rsc
     done
