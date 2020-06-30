@@ -11,7 +11,7 @@
 #                                      |___/ 
 # ____________________________________________
 
-VERSION="0.1.0"
+VERSION="0.1.1"
 
 show_usage(){
     cat << EOF
@@ -114,13 +114,19 @@ function mikrocfg_build(){
     # current timestamp
     BUILD_DATE=$(date +"%Y%m%dT%H%M")
 
-    # generate build info
+    # generate build info; add header
     cat <<EOF > $DIST_DIR/mikrotik.rsc
 # ----------------------------------------------
 # PROJECT:   $TARGET_NAME
 # BUILD:     $BUILD_DATE
 # GENERATOR: mikrocfg
 # ----------------------------------------------
+{
+# startup delay 15s (to initialize interfaces...weak workaround..)
+:delay 15
+
+# outputbeep signal - 3 short tones
+:beep frequency=3000 length=100ms;:delay 150ms; :beep frequency=3000 length=100ms;:delay 150ms
 EOF
 
     # get all *.rsc file with leading priority "00-"
@@ -142,7 +148,19 @@ EOF
         cat $file >> $DIST_DIR/mikrotik.rsc
     done
 
+    # add footer
+    cat <<EOF >> $DIST_DIR/mikrotik.rsc
+# outputbeep signal - 1 long tone
+:beep frequency=3000 length=500ms;:delay 150ms;
+}
+EOF
+    echo "}" >> $DIST_DIR/mikrotik.rsc
+
+    # show message
     log_success "BUILD READY [$DIST_DIR/mikrotik.rsc]" '\x1B[92m\x1B[1m'
+
+    # cleanup
+    #sed -r '/^(\s*#|$)/d;'
 
      # print files
     log_success "files merged"
