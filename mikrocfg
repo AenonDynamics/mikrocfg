@@ -11,18 +11,24 @@
 #                                      |___/ 
 # ____________________________________________
 
-VERSION="0.1.1"
+# https://github.com/AenonDynamics/mikrocfg
+VERSION="1.0.0"
 
 show_usage(){
     cat << EOF
-Usage: mikrocfg <command> [args...]
-  Commands:
-    init <hostname>                run init script with default credentials on device (e.g. setup ssh keys; default 192.168.88.1)
-    build <target-directory>       build (merge) target config
-    deploy <target-directory>      deploy a already build target config using custom deploy script within working dir
-    apply <target-directory>       build, deploy and apply target configuration (system reset)
-    --help                         displays this help
-    --version                      displays version
+Usage: mikrocfg [options...] <command> [args...]
+manage MikroTik device configurations via ssh from a central repository
+
+Options:
+    -h,--help                       Displays this help
+    -v,--version                    Displays version
+
+Commands:
+    init <hostname>                 run init script with default credentials on device (e.g. setup ssh keys; default 192.168.88.1)
+    build <target-directory>        build (merge) target config
+    deploy <target-directory>       deploy a already build target config using custom deploy script within working dir
+    apply <target-directory>        build, deploy and apply target configuration (system reset)
+
 EOF
     exit 0
 }
@@ -37,15 +43,15 @@ EOF
     exit 0
 }
 
-# simple processing
-[ "$1" = "--help" ] && show_usage
-[ "$1" = "--version" ] && show_version
+# simple processing for help+versioning commands
+[ "$1" = "--help" ] || [ "$1" = "-h" ] || [ -z "$1" ] && show_usage
+[ "$1" = "--version" ] || [ "$1" = "-v" ] && show_version
 
 # Exit on Error
 set -e
 
 # basedir
-export BASEDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+export BASEDIR="$( cd "$( dirname "$(realpath ${BASH_SOURCE[0]})" )" && pwd )"
 export WORKINGDIR="$(pwd)"
 
 # extract target name; remove trailing slash
@@ -126,7 +132,7 @@ function mikrocfg_build(){
 :delay 15
 
 # outputbeep signal - 3 short tones
-:beep frequency=3000 length=100ms;:delay 150ms; :beep frequency=3000 length=100ms;:delay 150ms
+:beep frequency=3000 length=100ms;:delay 150ms; :beep frequency=3000 length=100ms;:delay 150ms; :beep frequency=3000 length=100ms;:delay 150ms
 EOF
 
     # get all *.rsc file with leading priority "00-"
@@ -150,19 +156,28 @@ EOF
 
     # add footer
     cat <<EOF >> $DIST_DIR/mikrotik.rsc
+
 # outputbeep signal - 1 long tone
-:beep frequency=3000 length=500ms;:delay 150ms;
+:beep frequency=3000 length=700ms;
+
+# delay 2s
+:delay 2000ms;
 }
 EOF
-    echo "}" >> $DIST_DIR/mikrotik.rsc
 
     # show message
     log_success "BUILD READY [$DIST_DIR/mikrotik.rsc]" '\x1B[92m\x1B[1m'
 
     # cleanup
-    #sed -r '/^(\s*#|$)/d;'
+    #sed -r '/^(\s*#|$)/d;' $DIST_DIR/mikrotik.rsc
 
-     # print files
+    # remove comments and whitespaces
+    perl -i -p0e 's/^\s*(#.*?)?\n//gms' $DIST_DIR/mikrotik.rsc
+
+    # flatten multiline commands
+    perl -i -p0e 's/\\\s*\n\s+//sg' $DIST_DIR/mikrotik.rsc
+
+    # print files
     log_success "files merged"
 }
 

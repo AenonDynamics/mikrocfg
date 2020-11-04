@@ -19,7 +19,7 @@ Download the [current release]() and unpack the files in e.g. `/opt/mikrocfg` - 
 ### Create Workspace ###
 
 A "workspace" is a directory containing multiple target directories. 
-Each target directory requires a config file named `.config` and holds all `.rsc`` config files (or symlinks).
+Each target directory requires a config file named `.config` and holds all `.rsc` config files (or symlinks).
 
 Additionally each workspace requires a `dist/` directory where the concatenated configuration files are stored. mikrocfg tool creates a sub-directory for each target within this directory (named exactly like the target).
 
