@@ -224,8 +224,8 @@ function mikrocfg_init(){
     ROUTER_ADDR="192.168.88.1"
 
     # hostname set ?
-    if [ ! -z "$2" ]; then
-        ROUTER_ADDR="$2"
+    if [ ! -z "$1" ]; then
+        ROUTER_ADDR="$1"
     fi
 
     log_info "uploading initial config to $ROUTER_ADDR"
@@ -257,7 +257,7 @@ mikrocfg_disclaimer
 case "$1" in
     init)
         mikrocfg_intro
-        mikrocfg_init
+        mikrocfg_init $2
         exit 0
     ;;
 
