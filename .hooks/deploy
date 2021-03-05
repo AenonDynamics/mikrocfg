@@ -5,9 +5,6 @@ set -e
 
 hook_deploy(){
 
-    # load host config
-    source $TARGET_DIR/.config
-
     echo "uploading config to $CONF_HOST"
 
      # default upload dir

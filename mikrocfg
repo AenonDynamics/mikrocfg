@@ -67,6 +67,9 @@ export DIST_DIR=$DIST_BASEDIR/$TARGET_NAME
 # get function utilities
 source $BASEDIR/functions
 
+# defaults
+OPTIMIZE="yes"
+
 # intro
 # ---------------------------------------
 function mikrocfg_intro(){
@@ -126,20 +129,11 @@ function mikrocfg_build(){
     # current timestamp
     BUILD_DATE=$(date +"%Y%m%dT%H%M")
 
-    # generate build info; add header
-    cat <<EOF > $DIST_DIR/mikrotik.rsc
-# ----------------------------------------------
-# PROJECT:   $TARGET_NAME
-# BUILD:     $BUILD_DATE
-# GENERATOR: mikrocfg
-# ----------------------------------------------
-{
-# startup delay 15s (to initialize interfaces...weak workaround..)
-:delay 15
+    # create empty file
+    echo "" > $DIST_DIR/mikrotik.rsc
 
-# outputbeep signal - 3 short tones
-:beep frequency=3000 length=100ms;:delay 150ms; :beep frequency=3000 length=100ms;:delay 150ms; :beep frequency=3000 length=100ms;:delay 150ms
-EOF
+    # generate build info; add header
+    hook_exec "script_header" "$DIST_DIR/mikrotik.rsc"
 
     # get all *.rsc file with leading priority "00-"
     # merge all files into mikrotik.rsc
@@ -161,15 +155,7 @@ EOF
     done
 
     # add footer
-    cat <<EOF >> $DIST_DIR/mikrotik.rsc
-
-# outputbeep signal - 1 long tone
-:beep frequency=3000 length=700ms;
-
-# delay 2s
-:delay 2000ms;
-}
-EOF
+    hook_exec "script_footer" "$DIST_DIR/mikrotik.rsc"
 
     # show message
     log_success "BUILD READY [$DIST_DIR/mikrotik.rsc]" '\x1B[92m\x1B[1m'
@@ -177,11 +163,18 @@ EOF
     # cleanup
     #sed -r '/^(\s*#|$)/d;' $DIST_DIR/mikrotik.rsc
 
-    # remove comments and whitespaces
-    perl -i -p0e 's/^\s*(#.*?)?\n//gms' $DIST_DIR/mikrotik.rsc
+    # apply optimizations ?
+    if [ "$OPTIMIZE" == "yes" ]; then
+        # remove comments and whitespaces
+        perl -i -p0e 's/^\s*(#.*?)?\n//gms' $DIST_DIR/mikrotik.rsc && {
+            log_info "comments and whitespaces removed"
+        }
 
-    # flatten multiline commands
-    perl -i -p0e 's/\\\s*\n\s+//sg' $DIST_DIR/mikrotik.rsc
+        # flatten multiline commands
+        perl -i -p0e 's/\\\s*\n\s+//sg' $DIST_DIR/mikrotik.rsc && {
+            log_info "multiline commands flattened"
+        }
+    fi
 
     # print files
     log_success "files merged"
@@ -199,13 +192,15 @@ function mikrocfg_deploy(){
     # execute script
     log_info "deploying $TARGET_NAME"
 
+    # load host config
+    source $TARGET_DIR/.config
+
+    # trigger deploy hook
     hook_exec "deploy" "$1" && {
         log_success "deploying succeed"
     } || {
         panic "deploy action failed"
     }
-
-    #$WORKINGDIR/deploy "$1" "$DIST_DIR/mikrotik.rsc" 
 }
 
 # initialize routeros device (setup accounts)

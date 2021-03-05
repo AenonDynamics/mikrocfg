@@ -68,6 +68,9 @@ SFTP_KEYFILE=".credentials/deployment"
 SFTP_KNOWN_HOSTS=".credentials/known_hosts"
 SFTP_PORT="22"
 SFTP_USER="admin"
+
+# enable/disable optimization
+OPTIMIZE="no"
 ```
 
 ### RSC files ###
@@ -93,7 +96,9 @@ The priority prefix is necessarry to avoid dependency issues (values/objects not
 
 **Config execution wrapper**
 
-All directives (from your config files) are wrapped into a scope with beep signals before/after the config has been applied. Delays are added as workaround to wait until all network devices have been initialied.
+All directives (from your config files) are wrapped into a scope with beep signals before/after the config has been applied. Delays are added as workaround to wait until all network devices have been initialized.
+
+Both (header + footer) parts can be overridden by custom hooks.
 
 ```
 # ----------------------------------------------
