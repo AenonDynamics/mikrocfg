@@ -1,0 +1,5 @@
+# sftp config for default deployment script
+SFTP_KEYFILE=".credentials/deployment"
+SFTP_KNOWN_HOSTS=".credentials/known_hosts"
+SFTP_PORT="22"
+SFTP_USER="admin"

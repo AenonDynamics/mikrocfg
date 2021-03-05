@@ -1,3 +1,13 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MPL-2.0
+
+# Version: 0.2.0
+# https://github.com/AndiDittrich/bash-functions
+# ----------------------------------
+# This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. 
+# If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+# ----------------------------------
+
 _print_colorized(){
     # extract color
     STYLE="$1"
@@ -6,7 +16,6 @@ _print_colorized(){
     shift
 
     # print colorized message
-    IFS=''
     echo -e "${STYLE}$*\e[0m"
 }
 
@@ -14,8 +23,30 @@ print_heading(){
     # title set ?
     [ -z "$1" ] && return
 
-    # default style: bold blue
+    # default style: bold bright blue
     STYLE='\x1B[34m\x1B[1m'
+
+    # style set ?
+    [ ! -z "$2" ] && {
+        STYLE="$2"
+    }
+
+    # std title 
+    TITLE="${1}"
+
+    # print heading
+    _print_colorized "$STYLE" \
+        "\n---------------------------------------------------------------\n" \
+        "${TITLE}" \
+        "\n---------------------------------------------------------------\n"
+}
+
+print_subheading(){
+    # title set ?
+    [ -z "$1" ] && return
+
+    # default style: bold blue
+    STYLE='\x1B[7m\x1B[34m\x1B[1m'
 
     # style set ?
     [ ! -z "$2" ] && {
@@ -24,34 +55,67 @@ print_heading(){
 
     # default title, text only
     TITLE="$1"
-
-    # figlet available ?
-    command -v figlet > /dev/null && {
-        TITLE=$(figlet "${TITLE}")
-    }
+    T=$(date +%T)
 
     # print heading
     _print_colorized "$STYLE" \
-        "${TITLE}\n\n"
-}
-
-log_error(){
-    # red bold
-    _print_colorized '\x1B[91m\x1B[1m' " >> $@"
+        "[$T] >> ${TITLE} "
 }
 
 log_success(){
     # green
-   _print_colorized '\x1B[92m' " >> $@"
+    local T=$(date +%T)
+   _print_colorized '\x1B[1m\x1B[92m' "[$T] >> $@"
 }
 
 log_info(){
+    # blue
+    local T=$(date +%T)
+    _print_colorized '\x1B[1m\x1B[34m' "[$T] >> $@"
+}
+
+log_warning(){
     # yellow
-    _print_colorized '\x1B[33m' " >> $@"
+    local T=$(date +%T)
+    _print_colorized '\x1B[1m\x1B[7m\x1B[33m' "[$T] >> $@ "
+}
+
+log_error(){
+    # red bold
+    local T=$(date +%T)
+    _print_colorized '\x1B[7m\x1B[91m\x1B[1m' "[$T] >> $@ "
 }
 
 panic(){
-    print_heading " > build failed" '\x1B[91m\x1B[1m'
     log_error "$@"
     exit 1
+}
+
+hook_exec(){
+    log_info "hook [$1] triggered"
+
+    # hook set ?
+    if [ -z "$1" ]; then
+        log_error "invalid hook call"
+        return
+    fi
+
+    # default hook source
+    local HOOK_FILE="$BASEDIR/.hooks/$1"
+
+    # hook file exists in working dir ?
+    if [ -f $WORKINGDIR/.hooks/$1 ]; then
+        local HOOK_FILE="$WORKINGDIR/.hooks/$1"
+    fi
+
+    # executable ?
+    if [ ! -f $HOOK_FILE ] || [ ! -x $HOOK_FILE ]; then
+        panic "hook [$HOOK_FILE] cannot be executed"
+    fi
+
+    # run hook
+    log_info "running hook [$1].."
+    HOOK_FN="hook_$1"
+    source $HOOK_FILE
+    $HOOK_FN $2
 }

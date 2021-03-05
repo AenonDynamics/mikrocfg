@@ -12,7 +12,7 @@
 # ____________________________________________
 
 # https://github.com/AenonDynamics/mikrocfg
-VERSION="1.0.0"
+VERSION="1.1.0"
 
 show_usage(){
     cat << EOF
@@ -71,7 +71,7 @@ source $BASEDIR/functions
 # ---------------------------------------
 function mikrocfg_intro(){
     _print_colorized '\x1B[1m' "_________________________________________________________________\n"
-     print_heading " >> mikrocfg" '\x1B[1m'
+    figlet " >> mikrocfg"
     _print_colorized '\x1B[1m' "_________________________________________________________________\n"
 }
 
@@ -85,15 +85,21 @@ function mikrocfg_disclaimer(){
 
 # check directory structure
 # ---------------------------------------
-function mikrocfg_precheck(){
+function mikrocfg_prepare(){
     # Check directory
     if [ ! -d "$TARGET_DIR" ]; then
-    panic "target [$TARGET_NAME] does not exists!"
+        panic "target [$TARGET_NAME] does not exists!"
     fi
 
     # Check directory
     if [ ! -d "$DIST_BASEDIR" ]; then
-    panic "dist base directory [$DIST_BASEDIR] does not exists!"
+        panic "dist base directory [$DIST_BASEDIR] does not exists!"
+    fi
+
+    # project config exists ?
+    if [ -f "$WORKINGDIR/.config" ]; then
+        log_info "loading project configuration"
+        source $WORKINGDIR/.config
     fi
 }
 
@@ -184,15 +190,6 @@ EOF
 # Run deploy script
 # ---------------------------------------
 function mikrocfg_deploy(){
-    # deploy script exists ?
-    if [ ! -f $WORKINGDIR/deploy ]; then
-        panic "deploy script [$WORKINGDIR/deploy] not exists"
-    fi
-
-    # executable ?
-    if [ ! -x $WORKINGDIR/deploy ]; then
-        panic "deploy script [$WORKINGDIR/deploy] is not executable"
-    fi
 
     # config exists ?
     if [ ! -f $DIST_DIR/mikrotik.rsc ]; then
@@ -202,11 +199,13 @@ function mikrocfg_deploy(){
     # execute script
     log_info "deploying $TARGET_NAME"
 
-    $WORKINGDIR/deploy "$1" "$DIST_DIR/mikrotik.rsc" && {
+    hook_exec "deploy" "$1" && {
         log_success "deploying succeed"
     } || {
         panic "deploy action failed"
     }
+
+    #$WORKINGDIR/deploy "$1" "$DIST_DIR/mikrotik.rsc" 
 }
 
 # initialize routeros device (setup accounts)
@@ -263,21 +262,21 @@ case "$1" in
 
     build)
         mikrocfg_intro
-        mikrocfg_precheck
+        mikrocfg_prepare
         mikrocfg_build
         exit 0
     ;;
 
     deploy)
         mikrocfg_intro
-        mikrocfg_precheck
+        mikrocfg_prepare
         mikrocfg_deploy "deploy"
         exit 0
     ;;
 
     apply)
         mikrocfg_intro
-        mikrocfg_precheck
+        mikrocfg_prepare
         mikrocfg_build
         mikrocfg_deploy "apply"
         exit 0
