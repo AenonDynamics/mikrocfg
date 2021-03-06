@@ -1,7 +1,3 @@
-#!/usr/bin/env bash
-
-function hook_script_header(){
-    cat <<EOF > $1 
 # ----------------------------------------------
 # PROJECT:   $TARGET_NAME
 # BUILD:     $BUILD_DATE
@@ -13,5 +9,3 @@ function hook_script_header(){
 
 # outputbeep signal - 3 short tones
 :beep frequency=3000 length=100ms;:delay 150ms; :beep frequency=3000 length=100ms;:delay 150ms; :beep frequency=3000 length=100ms;:delay 150ms
-EOF
-}

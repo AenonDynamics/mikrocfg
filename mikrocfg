@@ -12,7 +12,7 @@
 # ____________________________________________
 
 # https://github.com/AenonDynamics/mikrocfg
-VERSION="1.1.0"
+VERSION="2.0.0"
 
 show_usage(){
     cat << EOF
@@ -109,14 +109,39 @@ function mikrocfg_prepare(){
 # Trigger build
 # ---------------------------------------
 function mikrocfg_build(){
+    # single target build ?
+    if [ ! -d "${TARGET_DIR}/devices" ]; then
+        # passthrough
+        mikrocfg_build_target "mikrotik.rsc" ""
+    fi
+
+    # find all targets
+    find ${TARGET_DIR}/devices/* -type d | sort | while read -r subtarget
+    do
+        # get basename
+        local DEVICE_NAME=$(basename ${subtarget})
+        log_warning "subtarget ${DEVICE_NAME}"
+
+        # trigger build
+        mikrocfg_build_target "${DEVICE_NAME}.rsc" "${DEVICE_NAME}"
+    done
+}
+
+# Build single target
+# ---------------------------------------
+function mikrocfg_build_target(){
 
     log_info "building $TARGET_NAME"
 
+    # create temp dir
+    TEMP_DIR=$(mktemp -d)
+    trap "rm -rf -- ${TEMP_DIR}" EXIT
+
+    # output filename
+    DIST_FILE=$DIST_DIR/$1
+
     # Check directory
-    if [ -d "$DIST_DIR" ]; then
-        log_info "dist directory does exists..cleanup"
-        rm -rf $DIST_DIR/*
-    else
+    if [ ! -d "$DIST_DIR" ]; then
         log_info "dist directory [$DIST_DIR] does not exists..creating"
         mkdir $DIST_DIR
     fi
@@ -130,54 +155,75 @@ function mikrocfg_build(){
     BUILD_DATE=$(date +"%Y%m%dT%H%M")
 
     # create empty file
-    echo "" > $DIST_DIR/mikrotik.rsc
+    echo "" > ${DIST_FILE}
 
-    # generate build info; add header
-    hook_exec "script_header" "$DIST_DIR/mikrotik.rsc"
+    # copy files into temp dir
+    cp ${BASEDIR}/.defaults/*.rsc ${TEMP_DIR} && {
+        log_message "added default files"
+    }
+    [ -d ${WORKINGDIR}/.defaults ] && cp ${TARGET_DIR}/.defaults/*.rsc ${TEMP_DIR} 2>/dev/null && {
+        log_message "added workspace default files"
+    }
+    cp ${TARGET_DIR}/*.rsc ${TEMP_DIR} 2>/dev/null && {
+        log_message "added target files"
+    }
+    # subtarget set ?
+    [ ! -z "$2" ] && cp ${TARGET_DIR}/devices/$2/*.rsc 2>/dev/null ${TEMP_DIR} && {
+        log_message "added subtarget files"
+    }
+
+    # trigger hook
+    hook_exec "script_header" "${DIST_FILE}"
+
+    # append header
+    cat ${TEMP_DIR}/header.rsc >> ${DIST_FILE}
 
     # get all *.rsc file with leading priority "00-"
     # merge all files into mikrotik.rsc
-    find $TARGET_DIR -type f,l | grep -E '/[0-9]+-.*\.rsc$' | sort | while read -r file
+    find $TEMP_DIR -type f,l | grep -E '/[0-9]+-.*\.rsc$' | sort | while read -r file
     do
         # extract filename
         FILENAME=$(basename $file)
 
         # show filename
-        log_info $FILENAME
+        log_message $FILENAME
 
         # add header
-        echo -e "\n# ----------------------------------------------" >> $DIST_DIR/mikrotik.rsc
-        echo "# FILE >> $FILENAME" >> $DIST_DIR/mikrotik.rsc
-        echo -e "# ----------------------------------------------\n" >> $DIST_DIR/mikrotik.rsc
+        echo -e "\n# ----------------------------------------------" >> ${DIST_FILE}
+        echo "# FILE >> $FILENAME" >> ${DIST_FILE}
+        echo -e "# ----------------------------------------------\n" >> ${DIST_FILE}
         
         # append file
-        cat $file >> $DIST_DIR/mikrotik.rsc
+        cat $file >> ${DIST_FILE}
     done
 
-    # add footer
-    hook_exec "script_footer" "$DIST_DIR/mikrotik.rsc"
+    # append footer
+    cat ${TEMP_DIR}/footer.rsc >> ${DIST_FILE}
 
-    # show message
-    log_success "BUILD READY [$DIST_DIR/mikrotik.rsc]" '\x1B[92m\x1B[1m'
+    # trigger hook
+    hook_exec "script_footer" "${DIST_FILE}"
 
-    # cleanup
-    #sed -r '/^(\s*#|$)/d;' $DIST_DIR/mikrotik.rsc
+    # print files
+    log_success "files merged"
 
     # apply optimizations ?
     if [ "$OPTIMIZE" == "yes" ]; then
         # remove comments and whitespaces
-        perl -i -p0e 's/^\s*(#.*?)?\n//gms' $DIST_DIR/mikrotik.rsc && {
+        perl -i -p0e 's/^\s*(#.*?)?\n//gms' ${DIST_FILE} && {
             log_info "comments and whitespaces removed"
         }
 
         # flatten multiline commands
-        perl -i -p0e 's/\\\s*\n\s+//sg' $DIST_DIR/mikrotik.rsc && {
+        perl -i -p0e 's/\\\s*\n\s+//sg' ${DIST_FILE} && {
             log_info "multiline commands flattened"
         }
     fi
 
-    # print files
-    log_success "files merged"
+    # trigger hook
+    hook_exec "post_build" "${DIST_FILE}"
+
+    # show message
+    log_success "BUILD READY [${DIST_FILE}]" '\x1B[92m\x1B[1m'
 }
 
 # Run deploy script
@@ -185,8 +231,8 @@ function mikrocfg_build(){
 function mikrocfg_deploy(){
 
     # config exists ?
-    if [ ! -f $DIST_DIR/mikrotik.rsc ]; then
-        panic "config [$DIST_DIR/mikrotik.rsc] not exists"
+    if [ ! -f ${DIST_FILE} ]; then
+        panic "config [${DIST_FILE}] not exists"
     fi
 
     # execute script

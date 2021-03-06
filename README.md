@@ -94,11 +94,13 @@ The priority prefix is necessarry to avoid dependency issues (values/objects not
 * `20-wlan.conf`
 * `interfaces.rsc`
 
-**Config execution wrapper**
+### Config execution wrapper ###
 
 All directives (from your config files) are wrapped into a scope with beep signals before/after the config has been applied. Delays are added as workaround to wait until all network devices have been initialized.
 
-Both (header + footer) parts can be overridden by custom hooks.
+Both (header + footer) parts can be overridden by adding the files to the project.
+
+File: `header.rsc`
 
 ```
 # ----------------------------------------------
@@ -112,9 +114,11 @@ Both (header + footer) parts can be overridden by custom hooks.
 
 # outputbeep signal - 3 short tones
 :beep frequency=3000 length=100ms;:delay 150ms; :beep frequency=3000 length=100ms;:delay 150ms; :beep frequency=3000 length=100ms;:delay 150ms
+```
 
-<<< MERGED FILES >>>
+File: `footer.rsc`
 
+```
 # outputbeep signal - 1 long tone
 :beep frequency=3000 length=700ms;
 
@@ -122,13 +126,17 @@ Both (header + footer) parts can be overridden by custom hooks.
 :delay 2000ms;
 ```
 
+### Default directory ###
+
+All files within the `.defaults/` directory of the workspace are added to **each** configuration (merged). It can be used to apply global defaults or override the header/footer scripts globally
+
 ## Deployment ##
 
 The configuration deployment is achieved with a custom shell script. Basically it uploads the configuration to the device and triggers a system reset using the generated configuration as initial device config (`run-after-reset`).
 
 It can be easily modified to run bulk upgrades on device groups.
 
-**Default deployment script**
+**Standard deployment script**
 
 A default deployment script is located in `.hooks/deploy` which is configured per target or within the project config.
 

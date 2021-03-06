@@ -62,6 +62,12 @@ print_subheading(){
         "[$T] >> ${TITLE} "
 }
 
+log_message(){
+    # green
+    local T=$(date +%T)
+    echo "[$T] >> $@"
+}
+
 log_success(){
     # green
     local T=$(date +%T)
@@ -108,8 +114,13 @@ hook_exec(){
         local HOOK_FILE="$WORKINGDIR/.hooks/$1"
     fi
 
+    # exists ?
+    if [ ! -f $HOOK_FILE ]; then
+        return 0
+    fi
+
     # executable ?
-    if [ ! -f $HOOK_FILE ] || [ ! -x $HOOK_FILE ]; then
+    if [ ! -x $HOOK_FILE ]; then
         panic "hook [$HOOK_FILE] cannot be executed"
     fi
 
