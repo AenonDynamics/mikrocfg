@@ -34,7 +34,7 @@ hook_deploy(){
         echo "files uploaded"
     } || {
         echo "uploading failed"
-        exit 1
+        return 1
     }
 
     # wait a few seconds
@@ -43,7 +43,7 @@ hook_deploy(){
     # apply changes ?
     if [ "$2" == "apply" ]; then
         echo "applying new configuration - system reset.."
-        ssh -i $SFTP_KEYFILE -p $SFTP_PORT -o UserKnownHostsFile=$SFTP_KNOWN_HOSTS -o StrictHostKeyChecking=no $SFTP_DSN \
+        ssh -n -i $SFTP_KEYFILE -p $SFTP_PORT -o UserKnownHostsFile=$SFTP_KNOWN_HOSTS -o StrictHostKeyChecking=no $SFTP_DSN \
             "/system reset-configuration keep-users=yes run-after-reset=${UPLOAD_DIR}config.rsc" || {
             echo "reboot"
         }

@@ -106,6 +106,8 @@ hook_exec(){
         return
     fi
 
+    local HOOK_FN="hook_$1"
+
     # default hook source
     local HOOK_FILE="$BASEDIR/.hooks/$1"
 
@@ -126,7 +128,6 @@ hook_exec(){
 
     # run hook
     log_info "running hook [$1].."
-    HOOK_FN="hook_$1"
 
     # strip hookname
     shift

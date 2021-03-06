@@ -111,6 +111,8 @@ function mikrocfg_prepare(){
 function mikrocfg_build(){
     # single target build ?
     if [ ! -d "${TARGET_DIR}/devices" ]; then
+        print_subheading "building $TARGET_NAME"
+
         # passthrough
         mikrocfg_build_target "mikrotik.rsc" ""
         return
@@ -121,7 +123,7 @@ function mikrocfg_build(){
     do
         # get basename
         local DEVICE_NAME=$(basename ${subtarget})
-        log_warning "subtarget ${DEVICE_NAME}"
+        print_subheading "building subtarget ${DEVICE_NAME}"
 
         # trigger build
         mikrocfg_build_target "${DEVICE_NAME}.rsc" "${DEVICE_NAME}"
@@ -131,8 +133,6 @@ function mikrocfg_build(){
 # Build single target
 # ---------------------------------------
 function mikrocfg_build_target(){
-
-    log_info "building $TARGET_NAME"
 
     # create temp dir
     TEMP_DIR=$(mktemp -d)
@@ -230,9 +230,10 @@ function mikrocfg_build_target(){
 # Trigger deploy
 # ---------------------------------------
 function mikrocfg_deploy(){
+
     # single target build ?
     if [ ! -d "${TARGET_DIR}/devices" ]; then
-        log_warning "target ${TARGET_NAME}"
+        print_subheading "deploying target ${TARGET_NAME}"
 
         # passthrough
         mikrocfg_deploy_target "${DIST_DIR}/mikrotik.rsc" "$TARGET_DIR/.config" "$1"
@@ -244,7 +245,7 @@ function mikrocfg_deploy(){
     do
         # get basename
         local DEVICE_NAME=$(basename ${subtarget})
-        log_warning "subtarget ${DEVICE_NAME}"
+        print_subheading "deploying subtarget ${DEVICE_NAME}"
 
         # trigger build
         mikrocfg_deploy_target "${DIST_DIR}/${DEVICE_NAME}.rsc" "${subtarget}/.config" "$1"
@@ -274,7 +275,7 @@ function mikrocfg_deploy_target(){
     hook_exec "deploy" "$1" "$3" && {
         log_success "deploying succeed"
     } || {
-        Log_error "deploy action failed"
+        log_error "deploy action failed"
     }
 }
 
