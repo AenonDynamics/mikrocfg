@@ -11,7 +11,7 @@ hook_deploy(){
     local UPLOAD_DIR="flash/"
 
     # file to upload
-    local DIST_FILE="$DIST_DIR/mikrotik.rsc" 
+    local DIST_FILE="$1" 
 
     # DSN
     local SFTP_DSN="${SFTP_USER}@${CONF_HOST}"
@@ -41,7 +41,7 @@ hook_deploy(){
     sleep 5
 
     # apply changes ?
-    if [ "$1" == "apply" ]; then
+    if [ "$2" == "apply" ]; then
         echo "applying new configuration - system reset.."
         ssh -i $SFTP_KEYFILE -p $SFTP_PORT -o UserKnownHostsFile=$SFTP_KNOWN_HOSTS -o StrictHostKeyChecking=no $SFTP_DSN \
             "/system reset-configuration keep-users=yes run-after-reset=${UPLOAD_DIR}config.rsc" || {

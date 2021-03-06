@@ -113,6 +113,7 @@ function mikrocfg_build(){
     if [ ! -d "${TARGET_DIR}/devices" ]; then
         # passthrough
         mikrocfg_build_target "mikrotik.rsc" ""
+        return
     fi
 
     # find all targets
@@ -226,26 +227,54 @@ function mikrocfg_build_target(){
     log_success "BUILD READY [${DIST_FILE}]" '\x1B[92m\x1B[1m'
 }
 
-# Run deploy script
+# Trigger deploy
 # ---------------------------------------
 function mikrocfg_deploy(){
+    # single target build ?
+    if [ ! -d "${TARGET_DIR}/devices" ]; then
+        log_warning "target ${TARGET_NAME}"
 
-    # config exists ?
-    if [ ! -f ${DIST_FILE} ]; then
-        panic "config [${DIST_FILE}] not exists"
+        # passthrough
+        mikrocfg_deploy_target "${DIST_DIR}/mikrotik.rsc" "$TARGET_DIR/.config" "$1"
+        return
     fi
 
-    # execute script
-    log_info "deploying $TARGET_NAME"
+    # find all deployable targets
+    find ${TARGET_DIR}/devices/* -type d | sort | while read -r subtarget
+    do
+        # get basename
+        local DEVICE_NAME=$(basename ${subtarget})
+        log_warning "subtarget ${DEVICE_NAME}"
 
-    # load host config
-    source $TARGET_DIR/.config
+        # trigger build
+        mikrocfg_deploy_target "${DIST_DIR}/${DEVICE_NAME}.rsc" "${subtarget}/.config" "$1"
+    done
+}
+
+# Run deploy script
+# ---------------------------------------
+function mikrocfg_deploy_target(){
+
+    # config exists ?
+    if [ ! -f $1 ]; then
+        log_error "device config [$1] not exists..skipping"
+        return
+    fi
+
+    # target deployconfig exists ?
+    if [ ! -f $2 ]; then
+        log_error "deployment config [$2] not exists..skipping"
+        return
+    fi
+
+    # load target config
+    source $2
 
     # trigger deploy hook
-    hook_exec "deploy" "$1" && {
+    hook_exec "deploy" "$1" "$3" && {
         log_success "deploying succeed"
     } || {
-        panic "deploy action failed"
+        Log_error "deploy action failed"
     }
 }
 

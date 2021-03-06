@@ -127,6 +127,11 @@ hook_exec(){
     # run hook
     log_info "running hook [$1].."
     HOOK_FN="hook_$1"
+
+    # strip hookname
+    shift
+
+    # load and execute
     source $HOOK_FILE
-    $HOOK_FN $2
+    $HOOK_FN $@
 }
