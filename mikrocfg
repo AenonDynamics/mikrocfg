@@ -25,10 +25,12 @@ Options:
 
 Commands:
     init <hostname>                 run init script with default credentials on device (e.g. setup ssh keys; default 192.168.88.1)
+    reboot <target-directory>       reboot targets/subtargets
+
     build <target-directory>        build (merge) target config
     deploy <target-directory>       deploy a already build target config using custom deploy script within working dir
     apply <target-directory>        build, deploy and apply target configuration (system reset)
-
+    
 EOF
     exit 0
 }
@@ -283,8 +285,8 @@ function mikrocfg_deploy_target(){
 # ---------------------------------------
 function mikrocfg_init(){
     # config dir exists ?
-    if [ ! -d $WORKINGDIR/_init ]; then
-        panic "init config [$WORKINGDIR/_init] not exists"
+    if [ ! -d $WORKINGDIR/.init ]; then
+        panic "init config [$WORKINGDIR/.init] not exists"
     fi
 
     # default upload dir
@@ -311,14 +313,48 @@ function mikrocfg_init(){
     }
 
     # upload files via scp
-    scp -r -o UserKnownHostsFile=$SFTP_KNOWN_HOSTS -o StrictHostKeyChecking=no $WORKINGDIR/_init/* admin@${ROUTER_ADDR}:/${UPLOAD_DIR}
+    scp -r -o UserKnownHostsFile=$SFTP_KNOWN_HOSTS -o StrictHostKeyChecking=no $WORKINGDIR/.init/* admin@${ROUTER_ADDR}:/${UPLOAD_DIR}
 
     # run init script ?
-    if [ -f $WORKINGDIR/_init/defconf.rsc ]; then
+    if [ -f $WORKINGDIR/.init/defconf.rsc ]; then
         log_info "executing initial setup.."
         ssh -o UserKnownHostsFile=$SFTP_KNOWN_HOSTS -o StrictHostKeyChecking=no admin@${ROUTER_ADDR} \
             "/system reset-configuration keep-users=no skip-backup=yes run-after-reset=${UPLOAD_DIR}defconf.rsc"
     fi
+}
+
+# reboot device using target credentials
+# ---------------------------------------
+function mikrocfg_reboot(){
+    # single target build ?
+    if [ ! -d "${TARGET_DIR}/devices" ]; then
+        print_subheading "rebooting device ${TARGET_NAME}"
+
+        # load target config
+        source $TARGET_DIR/.config
+
+        # trigger
+        hook_exec "reboot" || {
+            log_error "reboot action failed"
+        }
+        return
+    fi
+
+    # find all deployable targets
+    find ${TARGET_DIR}/devices/* -type d | sort | while read -r subtarget
+    do
+        # get basename
+        local DEVICE_NAME=$(basename ${subtarget})
+        print_subheading "rebooting device ${DEVICE_NAME}"
+
+        # load target config
+        source ${subtarget}/.config
+
+        # trigger
+        hook_exec "reboot" || {
+            log_error "reboot action failed"
+        }
+    done
 }
 
 # Command Dispatching
@@ -350,6 +386,13 @@ case "$1" in
         mikrocfg_prepare
         mikrocfg_build
         mikrocfg_deploy "apply"
+        exit 0
+    ;;
+
+    reboot)
+        mikrocfg_intro
+        mikrocfg_prepare
+        mikrocfg_reboot
         exit 0
     ;;
 

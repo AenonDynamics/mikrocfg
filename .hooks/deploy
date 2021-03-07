@@ -5,7 +5,7 @@ set -e
 
 hook_deploy(){
 
-    echo "uploading config to $CONF_HOST"
+    log_info "uploading config to $CONF_HOST"
 
      # default upload dir
     local UPLOAD_DIR="flash/"
@@ -20,9 +20,9 @@ hook_deploy(){
     {
         echo "cd flash"
     } | sftp -b - -i $SFTP_KEYFILE -P $SFTP_PORT -o UserKnownHostsFile=$SFTP_KNOWN_HOSTS -o StrictHostKeyChecking=no $SFTP_DSN && {
-        echo "directory /flash exists - assuming legacy RB/CRS device"
+        log_info "directory /flash exists - assuming legacy RB/CRS device"
     } || {
-        echo "directory /flash doesn't exists - assuming modern CCR/CRS device"
+        log_info "directory /flash doesn't exists - assuming modern CCR/CRS device"
         local UPLOAD_DIR=""
     }
 
@@ -31,9 +31,9 @@ hook_deploy(){
         echo "cd $UPLOAD_DIR"
         echo "put $DIST_FILE config.rsc"
     } | sftp -b - -i $SFTP_KEYFILE -P $SFTP_PORT -o UserKnownHostsFile=$SFTP_KNOWN_HOSTS -o StrictHostKeyChecking=no $SFTP_DSN && {
-        echo "files uploaded"
+        log_success "files uploaded"
     } || {
-        echo "uploading failed"
+        log_error "uploading failed"
         return 1
     }
 
@@ -42,10 +42,10 @@ hook_deploy(){
 
     # apply changes ?
     if [ "$2" == "apply" ]; then
-        echo "applying new configuration - system reset.."
+        log_info "applying new configuration - system reset.."
         ssh -n -i $SFTP_KEYFILE -p $SFTP_PORT -o UserKnownHostsFile=$SFTP_KNOWN_HOSTS -o StrictHostKeyChecking=no $SFTP_DSN \
             "/system reset-configuration keep-users=yes run-after-reset=${UPLOAD_DIR}config.rsc" || {
-            echo "reboot"
+            log_info "reboot.."
         }
     fi
 }
