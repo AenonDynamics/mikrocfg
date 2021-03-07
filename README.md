@@ -9,9 +9,29 @@ mikrocfg
 * deploy router configuration via ssh (key based)
 * multipart (`.d` style) config files
 * custom deploy tasks via shell script hooks
-* optimized config size by removing comments and flatten multiline directives 
+* multidevice mode to deploy same config (overrides optional) to multiple devices
+* optimized config size by removing comments and flatten multiline directives
+* execute pre-defined scripts on targets and device groups via ssh
 
 ## Usage ##
+
+```
+Usage: mikrocfg [options...] <command> [args...]
+manage MikroTik device configurations via ssh from a central repository
+
+Options:
+    -h,--help                       Displays this help
+    -v,--version                    Displays version
+
+Commands:
+    init <hostname>                 run init script with default credentials on device (e.g. setup ssh keys; default 192.168.88.1)
+    reboot <target>                 reboot targets/subtargets
+    exec <target> <cmd>             execute command file/snipped on target
+
+    build <target>                  build (merge) target config
+    deploy <target>                 deploy a already build target config using custom deploy script within working dir
+    apply <target>                  build, deploy and apply target configuration (system reset)
+```
 
 ### Installation ###
 
@@ -151,6 +171,23 @@ To simplify the process the `mikrocfg init` command uploads all files within the
 Optionally a default configuration `.init/defconf.rsc` is applied (system reset) to create an initial state.
 
 The existence of a persistent `flash/` for legacy devices is automatically checked.
+
+## Comannd execution ##
+
+Pre-defined command snippets within the `.cmd` directory can be executed via ssh directly on the device (or group).
+
+**Example**
+
+File: `.cmd/rm-certs`
+
+```
+# remove all certificates
+/certificate remove [ find ]
+```
+
+**Execute**
+
+`$ mikrocfg exec mytargetGroup rm-certs`
 
 ## Usage notes ##
 

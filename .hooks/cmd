@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+# fail on error
+set -e
+
+hook_cmd(){
+
+    # DSN
+    local SFTP_DSN="${SFTP_USER}@${CONF_HOST}"
+
+    # run script snippet via ssh
+    ssh -T -i $SFTP_KEYFILE -p $SFTP_PORT -o UserKnownHostsFile=$SFTP_KNOWN_HOSTS -o StrictHostKeyChecking=no $SFTP_DSN < $1
+}

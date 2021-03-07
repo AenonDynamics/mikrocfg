@@ -25,11 +25,12 @@ Options:
 
 Commands:
     init <hostname>                 run init script with default credentials on device (e.g. setup ssh keys; default 192.168.88.1)
-    reboot <target-directory>       reboot targets/subtargets
+    reboot <target>                 reboot targets/subtargets
+    exec <target> <cmd>             execute command file/snipped on target
 
-    build <target-directory>        build (merge) target config
-    deploy <target-directory>       deploy a already build target config using custom deploy script within working dir
-    apply <target-directory>        build, deploy and apply target configuration (system reset)
+    build <target>                  build (merge) target config
+    deploy <target>                 deploy a already build target config using custom deploy script within working dir
+    apply <target>                  build, deploy and apply target configuration (system reset)
     
 EOF
     exit 0
@@ -357,6 +358,50 @@ function mikrocfg_reboot(){
     done
 }
 
+# execute command (script) directly via ssh
+# ---------------------------------------
+function mikrocfg_exec(){
+
+    # command filename
+    local CMD_FILE=${WORKINGDIR}/.cmd/$1.rsc
+
+    # command exists ?
+    if [ ! -f "$CMD_FILE" ]; then
+        log_error "command [$1] not found"
+        exit 1
+    fi
+
+    # single target build ?
+    if [ ! -d "${TARGET_DIR}/devices" ]; then
+        print_subheading "executing command on ${TARGET_NAME}"
+
+        # load target config
+        source $TARGET_DIR/.config
+
+        # trigger
+        hook_exec "cmd" "$CMD_FILE" || {
+            log_error "command failed"
+        }
+        return
+    fi
+
+    # find all deployable targets
+    find ${TARGET_DIR}/devices/* -type d | sort | while read -r subtarget
+    do
+        # get basename
+        local DEVICE_NAME=$(basename ${subtarget})
+        print_subheading "executing command on ${DEVICE_NAME}"
+
+        # load target config
+        source ${subtarget}/.config
+
+        # trigger
+        hook_exec "cmd" "$CMD_FILE" || {
+            log_error "command failed"
+        }
+    done
+}
+
 # Command Dispatching
 # ---------------------------------------
 mikrocfg_disclaimer
@@ -393,6 +438,13 @@ case "$1" in
         mikrocfg_intro
         mikrocfg_prepare
         mikrocfg_reboot
+        exit 0
+    ;;
+
+    exec)
+        mikrocfg_intro
+        mikrocfg_prepare
+        mikrocfg_exec "$3"
         exit 0
     ;;
 
