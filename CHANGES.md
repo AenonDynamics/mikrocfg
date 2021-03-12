@@ -8,6 +8,7 @@ Changelog
 * Added: project based configuration file `$WORKINGDIR/.config` loaded on startup (optional)
 * Added: device initialization example
 * Added: `reboot` command
+* Added: `exec` command
 * Added: config option `OPTIMIZE` to disable output "optimization"
 * Added: option to use custom header/footer/post_build hooks
 * Added: wrapper files `header.rsc` and `footer.rsc` can be overridden

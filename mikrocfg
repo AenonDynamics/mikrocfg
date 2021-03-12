@@ -152,7 +152,7 @@ function mikrocfg_build_target(){
 
     # Check build file
     if [ ! -f "$TARGET_DIR/.config" ]; then
-        panic "target config file [$TARGET_DIR] does not exists!"
+        log_warning "target config file [$TARGET_DIR/.config] does not exists!"
     fi
 
     # current timestamp
