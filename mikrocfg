@@ -12,7 +12,7 @@
 # ____________________________________________
 
 # https://github.com/AenonDynamics/mikrocfg
-VERSION="2.0.0"
+VERSION="2.0.1"
 
 show_usage(){
     cat << EOF
@@ -199,6 +199,9 @@ function mikrocfg_build_target(){
         
         # append file
         cat $file >> ${DIST_FILE}
+
+        # add linebreaks
+        echo -e "\n\n" >> ${DIST_FILE}
     done
 
     # append footer

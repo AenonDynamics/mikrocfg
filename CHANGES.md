@@ -1,6 +1,10 @@
 Changelog
 ====================================
 
+### 2.0.1 ###
+
+* Bugfix: added linebreak after each file to avoid errors when joining the footer
+
 ### 2.0.0 ###
 
 * Added: multidevice builds (subtargets)
