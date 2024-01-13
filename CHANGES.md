@@ -4,6 +4,7 @@ Changelog
 ### 2.1.0 ###
 
 * Added: `workspace init` command to create default workspace structure
+* Added: symlink check to throw an error on invalid links
 * Bugfix: in case `SFTP_KNOWN_HOSTS` is not set within config, `/dev/null` is used for the `init` command
 
 ### 2.0.1 ###

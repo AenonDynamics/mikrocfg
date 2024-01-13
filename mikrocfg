@@ -164,19 +164,14 @@ function mikrocfg_build_target(){
     echo "" > ${DIST_FILE}
 
     # copy files into temp dir
-    cp ${BASEDIR}/.defaults/*.rsc ${TEMP_DIR} && {
-        log_message "added default files"
-    }
-    [ -d ${WORKINGDIR}/.defaults ] && cp ${TARGET_DIR}/.defaults/*.rsc ${TEMP_DIR} 2>/dev/null && {
-        log_message "added workspace default files"
-    }
-    cp ${TARGET_DIR}/*.rsc ${TEMP_DIR} 2>/dev/null && {
-        log_message "added target files"
-    }
+    mikrocfg_copy_rsc_files "${BASEDIR}/.defaults/"
+    [ -d ${WORKINGDIR}/.defaults ] && mikrocfg_copy_rsc_files "${TARGET_DIR}/.defaults/" ${TEMP_DIR}
+    mikrocfg_copy_rsc_files "${TARGET_DIR}/*.rsc"
+
     # subtarget set ?
-    [ ! -z "$2" ] && cp ${TARGET_DIR}/devices/$2/*.rsc 2>/dev/null ${TEMP_DIR} && {
-        log_message "added subtarget files"
-    }
+    [ ! -z "$2" ] && mikrocfg_copy_rsc_files "${TARGET_DIR}/devices/$2/"
+
+    log_info "merging files.."
 
     # trigger hook
     hook_exec "script_header" "${DIST_FILE}"
@@ -186,13 +181,10 @@ function mikrocfg_build_target(){
 
     # get all *.rsc file with leading priority "00-"
     # merge all files into mikrotik.rsc
-    find $TEMP_DIR -type f,l | grep -E '/[0-9]+-.*\.rsc$' | sort | while read -r file
+    find $TEMP_DIR -type f | grep -E '/[0-9]+-.*\.rsc$' | sort | while read -r file
     do
         # extract filename
         FILENAME=$(basename $file)
-
-        # show filename
-        log_message $FILENAME
 
         # add header
         echo -e "\n# ----------------------------------------------" >> ${DIST_FILE}
@@ -429,6 +421,25 @@ function mikrocfg_workspace_init(){
 
     # generate ssh deploy key
     ssh-keygen -t rsa -b 3072 -f ${WORKINGDIR}/.credentials/mikrotik
+}
+
+# utility
+# ---------------------------------------
+function mikrocfg_copy_rsc_files(){
+    find $1 | grep -E '\.rsc$' | while read -r file
+    do
+        # extract filename
+        FILENAME=$(basename $file)
+
+        # check file/symlink exists
+        if [ ! -f "${file}" ]; then
+            panic "config file ${FILENAME} doesn't exist"
+        fi
+
+        # cp file
+        cp ${file} ${TEMP_DIR}
+        log_message "$FILENAME"
+    done
 }
 
 # Command Dispatching
