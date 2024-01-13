@@ -1,6 +1,11 @@
 Changelog
 ====================================
 
+### 2.1.0 ###
+
+* Added: `workspace init` command to create default workspace structure
+* Bugfix: in case `SFTP_KNOWN_HOSTS` is not set within config, `/dev/null` is used for the `init` command
+
 ### 2.0.1 ###
 
 * Bugfix: added linebreak after each file to avoid errors when joining the footer

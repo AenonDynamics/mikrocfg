@@ -12,7 +12,7 @@
 # ____________________________________________
 
 # https://github.com/AenonDynamics/mikrocfg
-VERSION="2.0.1"
+VERSION="2.1.0"
 
 show_usage(){
     cat << EOF
@@ -31,6 +31,8 @@ Commands:
     build <target>                  build (merge) target config
     deploy <target>                 deploy a already build target config using custom deploy script within working dir
     apply <target>                  build, deploy and apply target configuration (system reset)
+
+    workspace init                  initialize a new workspace/project (create structure within cwd)
     
 EOF
     exit 0
@@ -306,6 +308,11 @@ function mikrocfg_init(){
 
     log_info "uploading initial config to $ROUTER_ADDR"
 
+    # set known hosts to /dev/null in case it's not set by config
+    if [ -z "${SFTP_KNOWN_HOSTS}" ]; then
+        SFTP_KNOWN_HOSTS="/dev/null"
+    fi
+
     # /flash directory exists ? (not on CCR devices)
     {
         echo "cd flash"
@@ -405,31 +412,51 @@ function mikrocfg_exec(){
     done
 }
 
+# create workspace
+# ---------------------------------------
+function mikrocfg_workspace_init(){
+    # project config already exists ?
+    [ -f "$WORKINGDIR/.config" ] && panic "workspace already exists (.config file found)"
+
+    # project dir empty ?
+    [ ! -z "$(ls -A ${WORKINGDIR})" ] && panic "workspace not empty"
+
+    # copy default workspace
+    cp -RT ${BASEDIR}/.workspace ${WORKINGDIR}
+
+    # create dirs
+    mkdir ${WORKINGDIR}/{.hooks,.credentials,.cmd,dist}
+
+    # generate ssh deploy key
+    ssh-keygen -t rsa -b 3072 -f ${WORKINGDIR}/.credentials/mikrotik
+}
+
 # Command Dispatching
 # ---------------------------------------
 mikrocfg_disclaimer
-case "$1" in
-    init)
+case "$1:$2" in
+    init:*)
         mikrocfg_intro
+        mikrocfg_prepare
         mikrocfg_init $2
         exit 0
     ;;
 
-    build)
+    build:*)
         mikrocfg_intro
         mikrocfg_prepare
         mikrocfg_build
         exit 0
     ;;
 
-    deploy)
+    deploy:*)
         mikrocfg_intro
         mikrocfg_prepare
         mikrocfg_deploy "deploy"
         exit 0
     ;;
 
-    apply)
+    apply:*)
         mikrocfg_intro
         mikrocfg_prepare
         mikrocfg_build
@@ -437,17 +464,23 @@ case "$1" in
         exit 0
     ;;
 
-    reboot)
+    reboot:*)
         mikrocfg_intro
         mikrocfg_prepare
         mikrocfg_reboot
         exit 0
     ;;
 
-    exec)
+    exec:*)
         mikrocfg_intro
         mikrocfg_prepare
         mikrocfg_exec "$3"
+        exit 0
+    ;;
+
+    workspace:init)
+        mikrocfg_intro
+        mikrocfg_workspace_init
         exit 0
     ;;
 
