@@ -287,6 +287,13 @@ function mikrocfg_init(){
         panic "init config [$WORKINGDIR/.init] not exists"
     fi
 
+    # create temp dir
+    TEMP_DIR=$(mktemp -d)
+    trap "rm -rf -- ${TEMP_DIR}" EXIT
+
+    # copy files
+    cp ${WORKINGDIR}/.init/* ${TEMP_DIR}
+
     # default upload dir
     UPLOAD_DIR="flash/"
 
@@ -298,17 +305,38 @@ function mikrocfg_init(){
         ROUTER_ADDR="$1"
     fi
 
-    log_info "uploading initial config to $ROUTER_ADDR"
+    # generate random password
+    local INITPASSWD=$(openssl rand -base64 12)
 
-    # set known hosts to /dev/null in case it's not set by config
-    if [ -z "${SFTP_KNOWN_HOSTS}" ]; then
-        SFTP_KNOWN_HOSTS="/dev/null"
+     # show init passwd
+    log_warning "using random init password ${INITPASSWD}"
+
+    # add header
+    cat ${BASEDIR}/.defaults/header.init.rsc > ${TEMP_DIR}/init.rsc
+
+    # add random passphrase
+    echo -e "\n:local initpasswd \"${INITPASSWD}\"\n" >> ${TEMP_DIR}/init.rsc
+
+    # user defined init script exist ?
+    if [ -f "${TEMP_DIR}/defconf.rsc" ]; then
+        # add script
+        log_info "using user defined init script from workspace"
+        cat ${TEMP_DIR}/defconf.rsc >> ${TEMP_DIR}/init.rsc
+    else
+        # add default script
+        log_info "using default init script"
+        cat ${BASEDIR}/.defaults/defconf.rsc >> ${TEMP_DIR}/init.rsc
     fi
+
+    # add footer
+    cat ${BASEDIR}/.defaults/footer.init.rsc >> ${TEMP_DIR}/init.rsc
+
+    log_info "uploading initial config to $ROUTER_ADDR"
 
     # /flash directory exists ? (not on CCR devices)
     {
         echo "cd flash"
-    } | sftp -b - -o UserKnownHostsFile=$SFTP_KNOWN_HOSTS -o StrictHostKeyChecking=no admin@${ROUTER_ADDR} && {
+    } | sftp -b - -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no admin@${ROUTER_ADDR} && {
         log_info "directory /flash exists - assuming legacy RB device"
     } || {
         log_info "directory /flash doesn't exists - assuming CCR/CRS device"
@@ -316,13 +344,13 @@ function mikrocfg_init(){
     }
 
     # upload files via scp
-    scp -r -o UserKnownHostsFile=$SFTP_KNOWN_HOSTS -o StrictHostKeyChecking=no $WORKINGDIR/.init/* admin@${ROUTER_ADDR}:/${UPLOAD_DIR}
+    scp -r -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${TEMP_DIR}/* admin@${ROUTER_ADDR}:/${UPLOAD_DIR}
 
     # run init script ?
-    if [ -f $WORKINGDIR/.init/defconf.rsc ]; then
+    if [ -f "${TEMP_DIR}/init.rsc" ]; then
         log_info "executing initial setup.."
-        ssh -o UserKnownHostsFile=$SFTP_KNOWN_HOSTS -o StrictHostKeyChecking=no admin@${ROUTER_ADDR} \
-            "/system reset-configuration keep-users=no skip-backup=yes run-after-reset=${UPLOAD_DIR}defconf.rsc"
+        ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no admin@${ROUTER_ADDR} \
+            "/system reset-configuration keep-users=no skip-backup=yes run-after-reset=${UPLOAD_DIR}init.rsc"
     fi
 }
 
@@ -417,10 +445,13 @@ function mikrocfg_workspace_init(){
     cp -RT ${BASEDIR}/.workspace ${WORKINGDIR}
 
     # create dirs
-    mkdir ${WORKINGDIR}/{.hooks,.credentials,.cmd,dist}
+    mkdir ${WORKINGDIR}/{.hooks,.credentials,.cmd,.init,dist}
 
     # generate ssh deploy key
-    ssh-keygen -t rsa -b 3072 -f ${WORKINGDIR}/.credentials/mikrotik
+    ssh-keygen -t rsa -b 3072 -f ${WORKINGDIR}/.credentials/mikrotik -C "mgmt@mikrocfg"
+    
+    # copy ssh key to .init script dir
+    cp ${WORKINGDIR}/.credentials/mikrotik.pub ${WORKINGDIR}/.init/mgmt.rsa
 }
 
 # utility

@@ -1,4 +1,4 @@
-mikrocfg
+mikrocfg - MikroTik cli configuration utility
 =============================
 
 **Manage MikroTik device configurations via ssh from a central repository**
@@ -31,6 +31,9 @@ Commands:
     build <target>                  build (merge) target config
     deploy <target>                 deploy a already build target config using custom deploy script within working dir
     apply <target>                  build, deploy and apply target configuration (system reset)
+
+    workspace init                  initialize a new workspace/project (create structure within cwd)
+    
 ```
 
 ### Installation ###
@@ -168,7 +171,7 @@ Initializing new devices can be time consuming (adding users, ssh keys, ...).
 
 To simplify the process the `mikrocfg init` command uploads all files within the `.init` directory of the workspace to a mikrotik device using the default user `admin` without password.
 
-Optionally a default configuration `.init/defconf.rsc` is applied (system reset) to create an initial state.
+Optionally a custom  configuration `.init/defconf.rsc` is applied (system reset) to create an initial state. Otherwise the package default `defconf.rsc` is used.
 
 The existence of a persistent `flash/` for legacy devices is automatically checked.
 
