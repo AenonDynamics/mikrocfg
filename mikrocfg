@@ -12,7 +12,7 @@
 # ____________________________________________
 
 # https://github.com/AenonDynamics/mikrocfg
-VERSION="2.1.0"
+VERSION="2.1.1"
 
 show_usage(){
     cat << EOF
@@ -346,6 +346,9 @@ function mikrocfg_init(){
     # upload files via scp
     scp -r -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${TEMP_DIR}/* admin@${ROUTER_ADDR}:/${UPLOAD_DIR}
 
+    # forced delay
+    sleep 2
+    
     # run init script ?
     if [ -f "${TEMP_DIR}/init.rsc" ]; then
         log_info "executing initial setup.."

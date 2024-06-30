@@ -1,6 +1,11 @@
 Changelog
 ====================================
 
+### 2.1.1 ###
+
+* Changed: auto negotiation enabled for `ether1` and `ether2` in defonf
+* Bugfix: RouterOS `v7.15` compatibility - added `2s` delay between upload and reset
+
 ### 2.1.0 ###
 
 * Added: `workspace init` command to create default workspace structure

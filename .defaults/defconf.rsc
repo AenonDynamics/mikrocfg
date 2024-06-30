@@ -40,7 +40,6 @@
 :if ([/interface ethernet print count-only where name=ether1]=1) do={
 :log info message="ether1 found: adding to br0"
 /interface bridge port add bridge=br0 interface=ether1
-/interface ethernet set [ find default-name=ether1 ] auto-negotiation=no speed=100M-baseT-full
 }
 
 # ether2 port available ?
@@ -48,7 +47,6 @@
 :if ([/interface ethernet print count-only where name=ether2]=1) do={
 :log info message="ether2 found: adding to br0"
 /interface bridge port add bridge=br0 interface=ether2
-/interface ethernet set [ find default-name=ether2 ] auto-negotiation=no speed=100M-baseT-full
 }
 
 # combo port available ?
