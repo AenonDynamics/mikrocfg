@@ -9,14 +9,9 @@
 # add management user
 /user add name=mgmt password="$initpasswd" group=full address=192.168.88.0/24,172.16.0.0/12 comment="remote management"
 
-# ssh key available within flash dir ?
-:if ([:len [/file find name=flash/mgmt.rsa]] > 0) do={
-/user ssh-keys import user=mgmt public-key-file=flash/mgmt.rsa
-}
-
-# ssh key available within base dir ?
-:if ([:len [/file find name=mgmt.rsa]] > 0) do={
-/user ssh-keys import user=mgmt public-key-file=mgmt.rsa
+# ssh key available within upload (persistent) dir ?
+:if ([:len [/file find name="$sshkeyfile"]] > 0) do={
+/user ssh-keys import user=mgmt public-key-file="$sshkeyfile"
 }
 
 # setup device access (temporary until deployment)

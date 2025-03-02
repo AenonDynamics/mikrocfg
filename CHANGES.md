@@ -1,6 +1,10 @@
 Changelog
 ====================================
 
+### 2.2.0 ###
+
+* Bugfix: RouterOS `v7.18` compatibility - mgmt sshkeyfile path is dynamically generated to avoid syntax errors on non existing `flash/` dirs on modern devices. this also provides compatibility to legacy routerboard devices
+
 ### 2.1.1 ###
 
 * Changed: auto negotiation enabled for `ether1` and `ether2` in defonf

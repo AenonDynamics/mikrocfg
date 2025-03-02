@@ -12,7 +12,7 @@
 # ____________________________________________
 
 # https://github.com/AenonDynamics/mikrocfg
-VERSION="2.1.1"
+VERSION="2.2.0"
 
 show_usage(){
     cat << EOF
@@ -305,6 +305,16 @@ function mikrocfg_init(){
         ROUTER_ADDR="$1"
     fi
 
+    # /flash directory exists ? (legacy devices)
+    {
+        echo "cd flash"
+    } | sftp -b - -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no admin@${ROUTER_ADDR} && {
+        log_info "directory /flash exists - assuming legacy RB device"
+    } || {
+        log_info "directory /flash doesn't exists - assuming modern CCR/CRS device"
+        UPLOAD_DIR=""
+    }
+
     # generate random password
     local INITPASSWD=$(openssl rand -base64 12)
 
@@ -316,6 +326,9 @@ function mikrocfg_init(){
 
     # add random passphrase
     echo -e "\n:local initpasswd \"${INITPASSWD}\"\n" >> ${TEMP_DIR}/init.rsc
+
+    # add ssh keyfile path
+    echo -e "\n:local sshkeyfile \"${UPLOAD_DIR}mgmt.rsa\"\n" >> ${TEMP_DIR}/init.rsc
 
     # user defined init script exist ?
     if [ -f "${TEMP_DIR}/defconf.rsc" ]; then
@@ -332,16 +345,6 @@ function mikrocfg_init(){
     cat ${BASEDIR}/.defaults/footer.init.rsc >> ${TEMP_DIR}/init.rsc
 
     log_info "uploading initial config to $ROUTER_ADDR"
-
-    # /flash directory exists ? (not on CCR devices)
-    {
-        echo "cd flash"
-    } | sftp -b - -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no admin@${ROUTER_ADDR} && {
-        log_info "directory /flash exists - assuming legacy RB device"
-    } || {
-        log_info "directory /flash doesn't exists - assuming CCR/CRS device"
-        UPLOAD_DIR=""
-    }
 
     # upload files via scp
     scp -r -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${TEMP_DIR}/* admin@${ROUTER_ADDR}:/${UPLOAD_DIR}
